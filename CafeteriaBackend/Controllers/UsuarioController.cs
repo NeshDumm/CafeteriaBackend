@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using CafeteriaBackend.Models;
 using CafeteriaBackend.Repositories;
-using CafeteriaBackend.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 namespace CafeteriaBackend.Controllers
 {
-    [Route("api/[controller]")]
+    [Authorize] 
     [ApiController]
+    [Route("api/[controller]")]
     public class UsuarioController : ControllerBase
     {
 
@@ -38,6 +40,7 @@ namespace CafeteriaBackend.Controllers
         
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public ActionResult EliminarUsuario(int id)
         {
             bool eliminado = _usuarioRepositorio.EliminarUsuario(id);

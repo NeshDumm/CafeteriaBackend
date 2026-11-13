@@ -22,7 +22,7 @@ builder.Services.AddDbContext<CafeteriaDbContext>(options =>
 // con Entity Framework se usa AddScopedervices.AddControllers();
 // builder.Services.AddSingleton<UsuarioRepositorio>(); YA NO SE USA, SE USA AddScoped PARA QUE CREE UNA NUEVA INSTANCIA POR CADA PETICIÓN)
 builder.Services.AddScoped<UsuarioRepositorio>(); //este mejor pq crea una nueva instancia por cada petición, y no se comparte entre peticiones, lo cual es más seguro y evita problemas de concurrencia.
-
+builder.Services.AddScoped<ProveedorRepositorio>();
 // Autenticación: "los usuarios se identifican con un JWT"
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -89,4 +89,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
+app.Run();  

@@ -17,7 +17,7 @@ namespace CafeteriaBackend.Controllers
         {
             _usuarioRepositorio = usuarioRepositorio;
         }
-
+        [Authorize(Roles = "Admin, Usuario")]
         [HttpGet]
         public ICollection<Usuario> GetUsuarios()
         {
@@ -25,7 +25,7 @@ namespace CafeteriaBackend.Controllers
             return usuarios;
         }
 
-
+        [Authorize(Roles = "Admin, Usuario")]
         [HttpGet("{id}")]
         public ActionResult<Usuario> ObtenerPorId(int id)
         {
@@ -53,6 +53,7 @@ namespace CafeteriaBackend.Controllers
 
         //AGREGAR
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public ActionResult Agregar([FromBody] Usuario usuario )
         {
             var usr = new Usuario
@@ -66,7 +67,8 @@ namespace CafeteriaBackend.Controllers
             return CreatedAtAction(nameof(ObtenerPorId), new { id = usr.Id }, usr);
         }
 
-        [HttpPut("{id}")]  
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public ActionResult EditarUsuario(int id, [FromBody] Usuario usuarioActualizado)
         {
             var usuario = _usuarioRepositorio.EditarUsuario(id, usuarioActualizado);

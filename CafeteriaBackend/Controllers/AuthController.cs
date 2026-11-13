@@ -20,15 +20,24 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login(LoginRequest request)
     {
-        // SOLO PARA PRUEBAS: usuario fijo
-        if (request.Usuario != "admin" || request.Password != "1234")
+        // SOLO PARA PRUEBAS: dos usuarios fijos, cada uno con su rol
+        string? rol = null;
+
+        if (request.Usuario == "admin" && request.Password == "1234")
+            rol = "Admin";
+        else if (request.Usuario == "cliente" && request.Password == "1234")
+            rol = "Usuario";
+
+        if (rol == null)
             return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos" });
+
         var claims = new[]
         {
-new Claim(JwtRegisteredClaimNames.Sub, request.Usuario),
-new Claim(ClaimTypes.Role, "Admin"),
-new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-};
+            new Claim(JwtRegisteredClaimNames.Sub, request.Usuario),
+            new Claim(ClaimTypes.Role, rol), // aquí va el rol del usuario dinámico
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
         var key = new SymmetricSecurityKey(
         Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -38,6 +47,7 @@ new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         claims: claims,
         expires: DateTime.UtcNow.AddHours(1),
         signingCredentials: creds);
+
         return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
     }
 }

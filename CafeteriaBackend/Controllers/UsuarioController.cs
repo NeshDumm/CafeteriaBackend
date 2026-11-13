@@ -1,35 +1,35 @@
 ﻿using CafeteriaBackend.Models;
 using CafeteriaBackend.Repositories;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+
 namespace CafeteriaBackend.Controllers
 {
-    [Authorize] 
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class UsuarioController : ControllerBase
     {
+        private readonly UsuarioRepositorio _repo;
 
-        private readonly UsuarioRepositorio _usuarioRepositorio;
-
-        public UsuarioController(UsuarioRepositorio usuarioRepositorio)
+        public UsuarioController(UsuarioRepositorio repo)
         {
-            _usuarioRepositorio = usuarioRepositorio;
+            _repo = repo;
         }
-        [Authorize(Roles = "Admin, Usuario")]
+
         [HttpGet]
-        public ICollection<Usuario> GetUsuarios()
+        [Authorize(Roles = "Admin, Usuario")]
+        public async Task<ActionResult<List<Usuario>>> ObtenerTodos()
         {
-            var usuarios = _usuarioRepositorio.ObtenerUsuarios();
-            return usuarios;
+            var usuarios = await _repo.ObtenerTodosAsync();
+            return Ok(usuarios);
         }
 
-        [Authorize(Roles = "Admin, Usuario")]
         [HttpGet("{id}")]
-        public ActionResult<Usuario> ObtenerPorId(int id)
+        [Authorize(Roles = "Admin, Usuario")]
+        public async Task<ActionResult<Usuario>> ObtenerPorId(int id)
         {
-            var usuario = _usuarioRepositorio.ObtenerUsuarioPorId(id);
+            var usuario = await _repo.BuscarPorIdAsync(id);
             if (usuario == null)
             {
                 return NotFound();
@@ -37,46 +37,51 @@ namespace CafeteriaBackend.Controllers
             return Ok(usuario);
         }
 
-        
-
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
-        public ActionResult EliminarUsuario(int id)
-        {
-            bool eliminado = _usuarioRepositorio.EliminarUsuario(id);
-            if (!eliminado)
-            {
-                return NotFound();
-            }
-            return Ok();
-        }
-
-        //AGREGAR
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public ActionResult Agregar([FromBody] Usuario usuario )
+        public async Task<ActionResult> Agregar([FromBody] Usuario dto)
         {
-            var usr = new Usuario
+            var usuario = new Usuario
             {
-                Nombre = usuario.Nombre,
-                Correo = usuario.Correo,
-                Telefono = usuario.Telefono,
-                RolId = usuario.RolId
+                Nombre = dto.Nombre,
+                Correo = dto.Correo,
+                Telefono = dto.Telefono,
+                RolId = dto.RolId
             };
-            _usuarioRepositorio.AgregarUsuario(usr);
-            return CreatedAtAction(nameof(ObtenerPorId), new { id = usr.Id }, usr);
+            await _repo.AgregarAsync(usuario);
+            return CreatedAtAction(nameof(ObtenerPorId), new { id = usuario.Id }, usuario);
         }
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public ActionResult EditarUsuario(int id, [FromBody] Usuario usuarioActualizado)
+        public async Task<ActionResult> Actualizar(int id, [FromBody] Usuario dto)
         {
-            var usuario = _usuarioRepositorio.EditarUsuario(id, usuarioActualizado);
-            if (usuario == null)
+            var usuario = new Usuario
+            {
+                Id = id,
+                Nombre = dto.Nombre,
+                Correo = dto.Correo,
+                Telefono = dto.Telefono,
+                RolId = dto.RolId
+            };
+            bool actualizado = await _repo.ActualizarAsync(usuario);
+            if (!actualizado)
             {
                 return NotFound();
             }
-            return Ok(usuario);
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> Eliminar(int id)
+        {
+            bool eliminado = await _repo.EliminarPorIdAsync(id);
+            if (!eliminado)
+            {
+                return NotFound();
+            }
+            return NoContent();
         }
     }
 }

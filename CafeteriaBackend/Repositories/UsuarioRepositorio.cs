@@ -1,57 +1,64 @@
-﻿using CafeteriaBackend.Models;
+﻿using CafeteriaBackend.Data;
+using CafeteriaBackend.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace CafeteriaBackend.Repositories
+namespace CafeteriaBackend.Repositories;
 
+public class UsuarioRepositorio
 {
-    public class UsuarioRepositorio
+    private readonly CafeteriaDbContext _context;
+
+    public UsuarioRepositorio(CafeteriaDbContext context)
     {
-        private readonly List<Usuario> _usuarios;
+        _context = context;
+    }
 
-        public UsuarioRepositorio()
-        {
-            _usuarios = new List<Usuario>();
-            _usuarios.Add(new Usuario { Id = 1, Nombre = "Oscar Genial", Correo = "sapo@gmail.com" , Telefono = "1234567890", RolId = 1 });
-            _usuarios.Add(new Usuario { Id = 2, Nombre = "Anaela la chida", Correo = "sapo2@gmail.com", Telefono = "0987654321", RolId = 2 });
-            _usuarios.Add(new Usuario { Id = 3, Nombre = "Pepe", Correo = "sapo3@gmail.com", Telefono = "1122334455", RolId = 3 });
-        }
+    public async Task<List<Usuario>> ObtenerTodosAsync()
+    {
+        return await _context.Usuarios.AsNoTracking().ToListAsync();
+    }
 
-        public List<Usuario> ObtenerUsuarios()
-        {
-            return _usuarios;
-        }
+    public async Task<Usuario?> BuscarPorIdAsync(int id)
+    {
+        return await _context.Usuarios
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id);
+    }
 
-        public void AgregarUsuario(Usuario usuario)
-        {
-            this._usuarios.Add(usuario);
-        }
+    public async Task<Usuario> AgregarAsync(Usuario usuario)
+    {
+        _context.Usuarios.Add(usuario);
+        await _context.SaveChangesAsync();
+        return usuario;
+    }
 
-        public Usuario ObtenerUsuarioPorId(int id)
+    public async Task<bool> ActualizarAsync(Usuario usuario)
+    {
+        var existente = await _context.Usuarios.FindAsync(usuario.Id);
+        if (existente == null)
         {
-            return _usuarios.FirstOrDefault(u => u.Id == id);
-        }
-
-        public bool EliminarUsuario(int id)
-        {
-            Usuario? usuario = _usuarios.FirstOrDefault(u => u.Id == id);
-            if (usuario != null)
-            {
-                _usuarios.Remove(usuario);
-                return true;
-            }
             return false;
         }
 
-        public Usuario EditarUsuario(int id, Usuario usuarioActualizado)
+        existente.Nombre = usuario.Nombre;
+        existente.Correo = usuario.Correo;
+        existente.Telefono = usuario.Telefono;
+        existente.RolId = usuario.RolId;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> EliminarPorIdAsync(int id)
+    {
+        var existente = await _context.Usuarios.FindAsync(id);
+        if (existente == null)
         {
-            Usuario? usuario = _usuarios.FirstOrDefault(u => u.Id == id);
-            if (usuario != null)
-            {
-                usuario.Nombre = usuarioActualizado.Nombre;
-                usuario.Correo = usuarioActualizado.Correo;
-                usuario.Telefono = usuarioActualizado.Telefono;
-                usuario.RolId = usuarioActualizado.RolId;
-            }
-            return usuario;
+            return false;
         }
+
+        _context.Usuarios.Remove(existente);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }

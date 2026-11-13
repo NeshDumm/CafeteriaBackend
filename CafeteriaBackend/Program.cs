@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi;
+using CafeteriaBackend.Data;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,10 +13,15 @@ var builder = WebApplication.CreateBuilder(args);
 // ---------- SERVICIOS ----------
 builder.Services.AddControllers();
 
+// Registro del DbContext para Entity Framework Core
+builder.Services.AddDbContext<CafeteriaDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("CafeteriaDb")));
+
 //Para que se use el mismo objeto repositorio siempre, que no genere uno nuevo en cada petición (NECESARIO PARA QUE FUNCIONE LAS PETICIONES)
 // Una sola instancia para toda la app (válido si guarda datos en memoria;
-// con Entity Framework se usa AddScoped)
-builder.Services.AddSingleton<UsuarioRepositorio>();
+// con Entity Framework se usa AddScopedervices.AddControllers();
+// builder.Services.AddSingleton<UsuarioRepositorio>(); YA NO SE USA, SE USA AddScoped PARA QUE CREE UNA NUEVA INSTANCIA POR CADA PETICIÓN)
+builder.Services.AddScoped<UsuarioRepositorio>(); //este mejor pq crea una nueva instancia por cada petición, y no se comparte entre peticiones, lo cual es más seguro y evita problemas de concurrencia.
 
 // Autenticación: "los usuarios se identifican con un JWT"
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

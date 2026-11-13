@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using CafeteriaBackend.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -6,48 +8,102 @@ using System.Security.Claims;
 using System.Text;
 
 namespace CafeteriaBackend.Controllers;
+
 public record LoginRequest(string Usuario, string Password);
+public record RegisterRequest(string Usuario, string Email, string Password, string NombreCompleto);
+
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IConfiguration _config;
-    public AuthController(IConfiguration config)
+
+    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration config)
     {
+        _userManager = userManager;
         _config = config;
     }
-    [AllowAnonymous]
+
     [HttpPost("login")]
-    public IActionResult Login(LoginRequest request)
+    [AllowAnonymous]
+    public async Task<IActionResult> Login(LoginRequest request)
     {
-        // SOLO PARA PRUEBAS: dos usuarios fijos, cada uno con su rol
-        string? rol = null;
+        var user = await _userManager.FindByNameAsync(request.Usuario)
+            ?? await _userManager.FindByEmailAsync(request.Usuario);
 
-        if (request.Usuario == "admin" && request.Password == "1234")
-            rol = "Admin";
-        else if (request.Usuario == "cliente" && request.Password == "1234")
-            rol = "Usuario";
-
-        if (rol == null)
-            return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos" });
-
-        var claims = new[]
+        if (user == null)
         {
-            new Claim(JwtRegisteredClaimNames.Sub, request.Usuario),
-            new Claim(ClaimTypes.Role, rol), // aquí va el rol del usuario dinámico
+            return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos" });
+        }
+
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            return Unauthorized(new { mensaje = "Cuenta bloqueada temporalmente. Intenta más tarde." });
+        }
+
+        if (!await _userManager.CheckPasswordAsync(user, request.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos" });
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var claims = new List<Claim>
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+            new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        var key = new SymmetricSecurityKey(
-        Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
-        issuer: _config["Jwt:Issuer"],
-        audience: _config["Jwt:Audience"],
-        claims: claims,
-        expires: DateTime.UtcNow.AddHours(1),
-        signingCredentials: creds);
+        foreach (var rol in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, rol));
+        }
 
-        return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var expira = DateTime.UtcNow.AddHours(1);
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: expira,
+            signingCredentials: creds);
+
+        return Ok(new
+        {
+            token = new JwtSecurityTokenHandler().WriteToken(token),
+            expira,
+            usuario = user.UserName,
+            roles
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(RegisterRequest request)
+    {
+        var user = new ApplicationUser
+        {
+            UserName = request.Usuario,
+            Email = request.Email,
+            NombreCompleto = request.NombreCompleto
+        };
+
+        var resultado = await _userManager.CreateAsync(user, request.Password);
+        if (!resultado.Succeeded)
+        {
+            return BadRequest(new { errores = resultado.Errors.Select(e => e.Description) });
+        }
+
+        // El rol lo decide el servidor, nunca el cliente
+        await _userManager.AddToRoleAsync(user, "Usuario");
+
+        return Ok(new { mensaje = "Usuario registrado correctamente", usuario = user.UserName });
     }
 }

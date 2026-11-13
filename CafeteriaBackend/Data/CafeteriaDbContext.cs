@@ -1,10 +1,10 @@
 ﻿using CafeteriaBackend.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection.Emit;
 
 namespace CafeteriaBackend.Data;
 
-public class CafeteriaDbContext : DbContext
+public class CafeteriaDbContext : IdentityDbContext<ApplicationUser>
 {
     public CafeteriaDbContext(DbContextOptions<CafeteriaDbContext> options)
         : base(options)
@@ -15,9 +15,10 @@ public class CafeteriaDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder); // NUEVA: siempre primero
+
         modelBuilder.Entity<Usuario>(entity =>
         {
-            // Le decimos a EF que el Nombre tendrá máximo 100 caracteres, igual que en la práctica
             entity.Property(p => p.Nombre).HasMaxLength(100);
         });
     }

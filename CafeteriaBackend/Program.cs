@@ -5,6 +5,8 @@ using System.Text;
 using Microsoft.OpenApi;
 using CafeteriaBackend.Data;
 using Microsoft.EntityFrameworkCore;
+using CafeteriaBackend.Models;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,19 @@ builder.Services.AddControllers();
 // Registro del DbContext para Entity Framework Core
 builder.Services.AddDbContext<CafeteriaDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("CafeteriaDb")));
+
+builder.Services
+    .AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.Password.RequiredLength = 8;
+        options.Password.RequireDigit = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireNonAlphanumeric = false;
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<CafeteriaDbContext>();
 
 //Para que se use el mismo objeto repositorio siempre, que no genere uno nuevo en cada petición (NECESARIO PARA QUE FUNCIONE LAS PETICIONES)
 // Una sola instancia para toda la app (válido si guarda datos en memoria;
@@ -66,6 +81,11 @@ builder.Services.AddSwaggerGen(c =>
 
 // ---------- PIPELINE ----------
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    await IdentitySeeder.SeedAsync(scope.ServiceProvider, app.Configuration);
+}
 
 app.UseHttpsRedirection();
 

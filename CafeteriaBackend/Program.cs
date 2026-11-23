@@ -1,12 +1,14 @@
+Ôªøusing CafeteriaBackend.Data;
+using CafeteriaBackend.Interfaces;
+using CafeteriaBackend.Models;
 using CafeteriaBackend.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Microsoft.OpenApi;
-using CafeteriaBackend.Data;
-using Microsoft.EntityFrameworkCore;
-using CafeteriaBackend.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using System.Text;
+using CafeteriaBackend.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,30 +34,58 @@ builder.Services
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<CafeteriaDbContext>();
 
-//Para que se use el mismo objeto repositorio siempre, que no genere uno nuevo en cada peticiÛn (NECESARIO PARA QUE FUNCIONE LAS PETICIONES)
-// Una sola instancia para toda la app (v·lido si guarda datos en memoria;
+//Para que se use el mismo objeto repositorio siempre, que no genere uno nuevo en cada petici√≥n (NECESARIO PARA QUE FUNCIONE LAS PETICIONES)
+// Una sola instancia para toda la app (v√°lido si guarda datos en memoria;
 // con Entity Framework se usa AddScopedervices.AddControllers();
-// builder.Services.AddSingleton<UsuarioRepositorio>(); YA NO SE USA, SE USA AddScoped PARA QUE CREE UNA NUEVA INSTANCIA POR CADA PETICI”N)
-builder.Services.AddScoped<UsuarioRepositorio>(); //este mejor pq crea una nueva instancia por cada peticiÛn, y no se comparte entre peticiones, lo cual es m·s seguro y evita problemas de concurrencia.
+// builder.Services.AddSingleton<UsuarioRepositorio>(); YA NO SE USA, SE USA AddScoped PARA QUE CREE UNA NUEVA INSTANCIA POR CADA PETICI√ìN)
+builder.Services.AddScoped<UsuarioRepositorio>(); //este mejor pq crea una nueva instancia por cada petici√≥n, y no se comparte entre peticiones, lo cual es m√°s seguro y evita problemas de concurrencia.
+//builder.Services.AddScoped<ProveedorRepositorio>();
+builder.Services.AddScoped<IProveedorRepositorio, ProveedorRepositorio>();
 
-// AutenticaciÛn: "los usuarios se identifican con un JWT"
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+
+// Autenticaci√≥n: "los usuarios se identifican con un JWT"
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true, // valida quiÈn emitiÛ el token
-        ValidateAudience = true, // valida para quiÈn es
+        ValidateIssuer = true, // valida qui√©n emiti√≥ el token
+        ValidateAudience = true, // valida para qui√©n es
         ValidateLifetime = true, // rechaza tokens vencidos
         ValidateIssuerSigningKey = true, // valida la firma
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
-    Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+            Console.WriteLine($"--> [AUTH] Header Authorization recibido: '{authHeader}'");
+            return Task.CompletedTask;
+        },
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"--> [AUTH ERROR] Falla validacion de token: {context.Exception.Message}");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            Console.WriteLine($"--> [AUTH 401] Challenge disparado. Error: '{context.Error}', Desc: '{context.ErrorDescription}'");
+            return Task.CompletedTask;
+        }
     };
 });
 
-// Habilita las reglas de permisos ([Authorize], roles, polÌticas)
+// Habilita las reglas de permisos ([Authorize], roles, pol√≠ticas)
 builder.Services.AddAuthorization();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

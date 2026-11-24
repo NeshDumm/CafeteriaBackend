@@ -27,7 +27,8 @@ public class CafeteriaDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Proveedor>(entity =>
         {
             entity.Property(p => p.Nombre).HasMaxLength(100).IsRequired();
-            entity.Property(p => p.Ruc).HasMaxLength(13).IsRequired();
+            entity.Property(p => p.Ruc).HasMaxLength(13);
+
         });
     }
 }

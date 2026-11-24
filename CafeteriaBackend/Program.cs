@@ -9,6 +9,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
 using CafeteriaBackend.Interfaces;
+using CafeteriaBackend.Repositories;
+using CafeteriaBackend.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,7 +43,8 @@ builder.Services
 // builder.Services.AddSingleton<UsuarioRepositorio>(); YA NO SE USA, SE USA AddScoped PARA QUE CREE UNA NUEVA INSTANCIA POR CADA PETICIÓN)
 builder.Services.AddScoped<UsuarioRepositorio>(); //este mejor pq crea una nueva instancia por cada petición, y no se comparte entre peticiones, lo cual es más seguro y evita problemas de concurrencia.
 //builder.Services.AddScoped<ProveedorRepositorio>();
-builder.Services.AddScoped<IProveedorRepositorio, ProveedorRepositorio>();
+builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
+builder.Services.AddScoped<IProveedorService, ProveedorService>();
 
 
 // Autenticación: "los usuarios se identifican con un JWT"
